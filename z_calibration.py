@@ -16,6 +16,7 @@ class ZCalibrationHelper:
         self.position_z_endstop = None
         self.config = config
         self.printer = config.get_printer()
+        self.probe_name = 'probe_{name}'.format(name=config.get('pin_probe', None)) if config.get('pin_probe', None) else 'probe'
         self.switch_offset = config.getfloat('switch_offset', None, above=0.)
         # TODO: remove: max_deviation is deprecated
         self.max_deviation = config.getfloat('max_deviation', None, above=0.)
@@ -82,7 +83,7 @@ class ZCalibrationHelper:
                                                     % (self.config.get_name()))
                 self.z_endstop = EndstopWrapper(endstop)
         # get probing settings
-        probe = self.printer.lookup_object('probe', default=None)
+        probe = self.printer.lookup_object(self.probe_name, default=None)
         if probe is None:
             raise self.printer.config_error("A probe is needed for %s"
                                             % (self.config.get_name()))
@@ -148,7 +149,7 @@ class ZCalibrationHelper:
         switch_offset = self._get_switch_offset(gcmd)
         self._log_params(gcmd, switch_offset, nozzle_site, switch_site,
                          bed_site)
-        state = CalibrationState(self, gcmd)
+        state = CalibrationState(self, gcmd, self.probe_name)
         state.calibrate_z(switch_offset, nozzle_site, switch_site, bed_site)
     cmd_PROBE_Z_ACCURACY_help = ("Probe Z-Endstop accuracy at"
                                  " Nozzle-Endstop position")
@@ -394,12 +395,12 @@ class EndstopWrapper:
         self.home_wait = self.mcu_endstop.home_wait
         self.query_endstop = self.mcu_endstop.query_endstop
 class CalibrationState:
-    def __init__(self, helper, gcmd):
+    def __init__(self, helper, gcmd, probe_name):
         self.helper = helper
         self.gcmd = gcmd
         self.gcode = helper.gcode
         self.z_endstop = helper.z_endstop
-        self.probe = helper.printer.lookup_object('probe')
+        self.probe = helper.printer.lookup_object(probe_name)
         self.toolhead = helper.printer.lookup_object('toolhead')
         self.gcode_move = helper.printer.lookup_object('gcode_move')
         self.max_deviation = helper.max_deviation
